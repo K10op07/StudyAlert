@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <meta name="description" content="Student Reminder App - Never miss a deadline again" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- App Icons (we use emoji as placeholder) -->
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <title>StudyAlert — Student Reminder App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ========== HEADER ========== -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-mark">📚</div>
+      <div class="header-text">
+        <h1 class="app-title">StudyAlert</h1>
+        <p class="app-tagline">Never miss a deadline</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="stats-pill">
+        <span id="pending-count">0</span> pending
+      </div>
+      <button id="calendar-btn" class="icon-btn" title="View Calendar">📅</button>
+      <button id="notif-btn" class="icon-btn" title="Enable Notifications">🔔</button>
+      <button id="about-btn" class="icon-btn" title="About & How to Use">ℹ️</button>
+    </div>
+  </header>
+
+  <!-- ========== MAIN LAYOUT ========== -->
+  <main class="app-main">
+
+    <!-- LEFT PANEL: ADD TASK FORM -->
+    <section class="panel panel-form" aria-label="Add new task">
+      <div class="panel-header">
+        <h2 class="panel-title" id="form-panel-title">Add New Task</h2>
+        <div class="panel-line"></div>
+      </div>
+
+      <form id="task-form" novalidate>
+        <!-- Hidden field: stores ID when editing -->
+        <input type="hidden" id="editing-task-id" value="" />
+
+        <!-- Task Title -->
+        <div class="form-group">
+          <label for="task-title">Task Title <span class="required">*</span></label>
+          <input
+            type="text"
+            id="task-title"
+            placeholder="e.g. Math Assignment Chapter 5"
+            maxlength="80"
+            autocomplete="off"
+            required
+          />
+          <span class="char-count" id="title-count">0 / 80</span>
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+          <label for="task-category">Category</label>
+          <div class="custom-select-wrapper">
+            <select id="task-category">
+              <option value="assignment">📝 Assignment</option>
+              <option value="exam">📖 Exam / Quiz</option>
+              <option value="project">🔬 Project</option>
+              <option value="lab">🧪 Lab / Practical</option>
+              <option value="reading">📚 Reading</option>
+              <option value="other">📌 Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Subject -->
+        <div class="form-group">
+          <label for="task-subject">Subject / Course</label>
+          <input
+            type="text"
+            id="task-subject"
+            placeholder="e.g. Mathematics, Physics..."
+            maxlength="50"
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Due Date -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-date">Due Date <span class="required">*</span></label>
+            <input type="date" id="task-date" required />
+          </div>
+          <div class="form-group">
+            <label for="task-time">Due Time <span class="required">*</span></label>
+            <input type="time" id="task-time" required />
+          </div>
+        </div>
+
+        <!-- Priority -->
+        <div class="form-group">
+          <label>Priority</label>
+          <div class="priority-group">
+            <label class="priority-option">
+              <input type="radio" name="priority" value="low" /> Low
+            </label>
+            <label class="priority-option">
+              <input type="radio" name="priority" value="medium" checked /> Medium
+            </label>
+            <label class="priority-option">
+              <input type="radio" name="priority" value="high" /> High
+            </label>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label for="task-notes">Notes (optional)</label>
+          <textarea
+            id="task-notes"
+            placeholder="Any extra details, page numbers, instructions..."
+            rows="3"
+            maxlength="200"
+          ></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="form-btn-row">
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            <span class="btn-icon">+</span>
+            <span class="btn-label">Add Task</span>
+          </button>
+          <button type="button" class="btn btn-cancel" id="cancel-edit-btn" hidden>
+            ✕ Cancel Edit
+          </button>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- RIGHT PANEL: TASK LIST -->
+    <section class="panel panel-list" aria-label="Task list">
+
+      <!-- Filter + Search Bar -->
+      <div class="list-toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Search tasks..." autocomplete="off" />
+        </div>
+        <div class="filter-tabs" role="tablist">
+          <button class="filter-tab active" data-filter="all" role="tab">All</button>
+          <button class="filter-tab" data-filter="pending" role="tab">Pending</button>
+          <button class="filter-tab" data-filter="completed" role="tab">Done</button>
+          <button class="filter-tab" data-filter="overdue" role="tab">Overdue</button>
+        </div>
+      </div>
+
+      <!-- Sort Controls -->
+      <div class="sort-bar">
+        <span class="sort-label">Sort by:</span>
+        <select id="sort-select">
+          <option value="date-asc">Date (Earliest)</option>
+          <option value="date-desc">Date (Latest)</option>
+          <option value="priority">Priority</option>
+          <option value="title">Title A–Z</option>
+        </select>
+        <button id="clear-completed-btn" class="btn-ghost btn-sm">Clear Completed</button>
+      </div>
+
+      <!-- Task Cards Container -->
+      <div id="task-list" class="task-list" role="list">
+        <!-- Tasks are injected here by JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state" hidden>
+        <div class="empty-icon">🎓</div>
+        <h3>No tasks yet!</h3>
+        <p>Add your first assignment or exam using the form on the left.</p>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ========== NOTIFICATION TOAST ========== -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <!-- ========== TASK DETAIL MODAL ========== -->
+  <div id="modal-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Task details">
+    <div class="modal">
+      <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ========== ALARM SOUND (Web Audio API - no file needed) ========== -->
+  <!-- Sound is generated in JS using Web Audio API -->
+
+  <!-- ========== CALENDAR MODAL ========== -->
+  <div id="calendar-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Task Calendar">
+    <div class="modal modal-calendar">
+      <button class="modal-close" id="calendar-close-btn" aria-label="Close">✕</button>
+
+      <!-- Month Navigation -->
+      <div class="cal-header">
+        <button class="cal-nav-btn" id="cal-prev">‹</button>
+        <div class="cal-month-label" id="cal-month-label">April 2025</div>
+        <button class="cal-nav-btn" id="cal-next">›</button>
+      </div>
+
+      <!-- Day Labels -->
+      <div class="cal-grid cal-day-labels">
+        <span>Sun</span><span>Mon</span><span>Tue</span>
+        <span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+
+      <!-- Day Cells (filled by JS) -->
+      <div class="cal-grid cal-days" id="cal-days"></div>
+
+      <!-- Legend -->
+      <div class="cal-legend">
+        <span class="cal-legend-item"><span class="dot dot-assignment"></span>Assignment</span>
+        <span class="cal-legend-item"><span class="dot dot-exam"></span>Exam</span>
+        <span class="cal-legend-item"><span class="dot dot-project"></span>Project</span>
+        <span class="cal-legend-item"><span class="dot dot-lab"></span>Lab</span>
+        <span class="cal-legend-item"><span class="dot dot-other"></span>Other</span>
+      </div>
+
+      <!-- Day Detail Panel (shown when a day is clicked) -->
+      <div id="cal-day-detail" class="cal-day-detail" hidden>
+        <h3 id="cal-detail-title" class="cal-detail-title"></h3>
+        <div id="cal-detail-tasks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ABOUT MODAL ========== -->
+  <div id="about-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="About StudyAlert">
+    <div class="modal modal-about">
+      <button class="modal-close" id="about-close-btn" aria-label="Close">✕</button>
+
+      <div class="about-hero">
+        <div class="about-logo">📚</div>
+        <h2 class="about-app-name">StudyAlert</h2>
+        <p class="about-version">Your personal student reminder app</p>
+      </div>
+
+      <div class="about-sections">
+
+        <!-- WHAT IS THIS -->
+        <div class="about-section">
+          <div class="about-section-title">🎯 What is StudyAlert?</div>
+          <p class="about-para">StudyAlert helps you track every assignment, exam, project and deadline in one place. It alerts you before things are due so you never miss anything important.</p>
+        </div>
+
+        <!-- HOW TO USE -->
+        <div class="about-section">
+          <div class="about-section-title">📖 How to Use — Step by Step</div>
+
+          <div class="about-step">
+            <div class="about-step-num">1</div>
+            <div class="about-step-body">
+              <strong>Add a Task</strong>
+              <p>Fill the form on the left. Enter the task title (e.g. "Math Assignment"), pick a category, your subject, the due date and time, and a priority level. Hit <em>Add Task</em>.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">2</div>
+            <div class="about-step-body">
+              <strong>Enable Notifications</strong>
+              <p>Tap the 🔔 bell icon at the top. Allow permission when the browser asks. You'll get an alert 15 minutes before a task is due, and another alert at the exact due time.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">3</div>
+            <div class="about-step-body">
+              <strong>View All Tasks in Calendar</strong>
+              <p>Tap 📅 to open the calendar view. Days with tasks show coloured dots — like festivals on a calendar. Tap any day to see its tasks. Tap a task to open its full details.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">4</div>
+            <div class="about-step-body">
+              <strong>Edit a Task</strong>
+              <p>Tap the ✏️ pencil button on any task card. The form on the left fills in with the existing details. Make your changes and tap <em>Save Changes</em>. Tap <em>✕ Cancel Edit</em> to abort.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">5</div>
+            <div class="about-step-body">
+              <strong>Mark a Task Done</strong>
+              <p>Tap the square checkbox on the left of any task card. It turns green with a ✓ and the task is crossed out. Tap it again to unmark it.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">6</div>
+            <div class="about-step-body">
+              <strong>Delete a Task</strong>
+              <p>Tap the 🗑️ bin icon on the task card. Confirm the popup. The task is permanently removed.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">7</div>
+            <div class="about-step-body">
+              <strong>Search and Filter</strong>
+              <p>Use the search box to find tasks by name or subject. Use the filter tabs — <em>All, Pending, Done, Overdue</em> — to quickly see only what matters.</p>
+            </div>
+          </div>
+
+          <div class="about-step">
+            <div class="about-step-num">8</div>
+            <div class="about-step-body">
+              <strong>Install on Your Phone</strong>
+              <p>Open the app in Chrome (Android) or Safari (iPhone), then use <em>Add to Home Screen</em>. It installs like a real app — no app store needed.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- FEATURES GRID -->
+        <div class="about-section">
+          <div class="about-section-title">✨ All Features</div>
+          <div class="about-features">
+            <div class="about-feat"><span class="feat-icon">📝</span><span>Add tasks with category, subject, date, time, priority &amp; notes</span></div>
+            <div class="about-feat"><span class="feat-icon">⏱️</span><span>Live countdown timers on every task card</span></div>
+            <div class="about-feat"><span class="feat-icon">🔔</span><span>Browser notifications at 15 min before and exact due time</span></div>
+            <div class="about-feat"><span class="feat-icon">📅</span><span>Full calendar view with coloured dot markers per day</span></div>
+            <div class="about-feat"><span class="feat-icon">✏️</span><span>Edit any task at any time without deleting it</span></div>
+            <div class="about-feat"><span class="feat-icon">⚠️</span><span>Daily warning notification for tasks due within 3 days</span></div>
+            <div class="about-feat"><span class="feat-icon">💾</span><span>Tasks auto-saved — survive page refresh and phone restart</span></div>
+            <div class="about-feat"><span class="feat-icon">📱</span><span>Installable as a home screen app (PWA) — works offline</span></div>
+            <div class="about-feat"><span class="feat-icon">🔍</span><span>Search, filter (All/Pending/Done/Overdue), and sort tasks</span></div>
+            <div class="about-feat"><span class="feat-icon">🎨</span><span>Colour-coded priorities and category badges on every card</span></div>
+          </div>
+        </div>
+
+        <!-- DOT LEGEND -->
+        <div class="about-section">
+          <div class="about-section-title">🎨 Calendar Dot Colours</div>
+          <div class="about-dots">
+            <span class="about-dot-row"><span class="dot dot-assignment"></span> Purple — Assignment</span>
+            <span class="about-dot-row"><span class="dot dot-exam"></span> Red — Exam / Quiz</span>
+            <span class="about-dot-row"><span class="dot dot-project"></span> Teal — Project</span>
+            <span class="about-dot-row"><span class="dot dot-lab"></span> Orange — Lab / Practical</span>
+            <span class="about-dot-row"><span class="dot dot-reading"></span> Green — Reading</span>
+            <span class="about-dot-row"><span class="dot dot-other"></span> Grey — Other / Completed</span>
+          </div>
+        </div>
+
+        <!-- TIPS -->
+        <div class="about-section">
+          <div class="about-section-title">💡 Quick Tips</div>
+          <ul class="about-tips">
+            <li>Tasks highlighted in <span style="color:var(--priority-medium)">orange</span> are due within 3 days — act on them first.</li>
+            <li>Tasks highlighted in <span style="color:var(--priority-high)">red</span> are overdue.</li>
+            <li>Use <strong>Priority: High</strong> for exams and deadlines you cannot miss.</li>
+            <li>The daily morning notification lists everything due in the next 3 days — check it every day.</li>
+            <li>Press <strong>Escape</strong> anywhere to close any open panel.</li>
+            <li>Tap a task card to open its full detail view with a quick complete / edit / delete.</li>
+          </ul>
+        </div>
+
+        <div class="about-footer">
+          Made with ❤️ · Built with HTML, CSS &amp; JavaScript · Runs 100% in your browser
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Load our JavaScript -->
+  <script src="app.js"></script>
+
+  <!-- Firebase Push Notifications (fill in your config inside this file) -->
+  <script src="firebase-push.js"></script>
+
+  <!-- Register Service Worker for PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+          .catch(err => console.log('❌ SW registration failed:', err));
+      });
+    }
+  </script>
+
+</body>
+</html>
